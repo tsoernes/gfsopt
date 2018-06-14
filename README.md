@@ -14,3 +14,30 @@ datadiff
 dlib
 
 # API
+## Creating optimizers
+Create optimizer from scratch
+```
+# Hyperparameters being optimized over.
+# Optimize non-int parameter 'beta' in range 0.5 to 0.8
+space = {'beta': (False, 0.5, 0.8)}  
+# Other hyperparamaters needed by objective function
+pp = {'alpha': 1}  
+opt = optimizer_from_file(pp, space)
+```
+
+Restore progress and settings from file
+```
+opt = optimizer_from_file("progress.pkl")
+```
+
+Restore progress and settings from file. 
+Check if saved hyperparameters differ from currently specified ones,
+and if they do, ask by terminal input which ones to use
+```
+pp = {'alpha': 1}
+space = {'beta': (False, 0.5, 0.8)}
+opt = optimizer_from_file("progress.pkl", pp, space)
+```
+
+# TODO
+Don't want to force restore or force saving

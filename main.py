@@ -31,13 +31,16 @@ class DlibRunner():
             n_avg=1,
             n_sims=1000,
             save_iter=30,
+            save=True,
             solver_epsilon=0.0005,
             relative_noise_magnitude=0.001):
         """
         n_concurrent: int, Number of concurrent procs
         n_avg: int, Number of runs to average over
         n_sims: int, Number of times to sample and test params
-        save_iter: int,
+        save_iter: int
+        save: bool, Whether to save every 'save_iter' iterations,
+            on user-quit (ctrl-c) and on completion
         solver_epsilon: float, see Dlib documentation
         relative_noise_magnitude: float, see Dlib documentation
         """
@@ -141,23 +144,6 @@ class DlibRunner():
                 if i > 0 and i % save_iter == 0 and len(results[i]) == n_avg:
                     save_evals()
 
-        """ the search will only attempt to find a global minimizer to at most
-        solver_epsilon accuracy. Once a local minimizer is found to that
-        accuracy the search will focus entirely on finding other minima
-        elsewhere rather than on further improving the current local optima
-        found so far. That is, once a local minima is identified to about
-        solver_epsilon accuracy, the algorithm will spend all its time
-        exploring the functions to find other local minima to investigate. An
-        epsilon of 0 means it will keep solving until it reaches full floating
-        point precision. Larger values will cause it to switch to pure global
-        exploration sooner and therefore might be more effective if your
-        objective function has many local minima and you don't care about a
-        super high precision solution.
-
-        On even iterations we pick the next x according to our upper bound while
-        on odd iterations we pick the next x according to the trust region model
-        """
-
         print(f"Dlib hopt for {n_sims} sims with {n_concurrent} procs"
               f" taking the average of {n_avg} runs"
               f" on params {self.space} and s.eps {eps}")
@@ -188,50 +174,26 @@ def cmp_and_choose(what, saved, specified):
     return chosen
 
 
-def dlib_proc(stratclass, pp, space_params, result_queue, i, space_vals):
+def dlib_proc(obj_func, pp, space_params, result_queue, i, space_vals):
     # Add/overwrite problem params with params given from dlib
     for j, key in enumerate(space_params):
         pp[key] = space_vals[j]
-
-    np.random.seed()
-    strat = stratclass(pp=pp, pid=i)
-    result = strat.simulate()
-    res = result[2] if len(result) > 1 else result[0]
-    if res is None:
-        res = 1
-    if strat.quit_sim and not strat.invalid_loss and not strat.exceeded_bthresh:
-        # If user quits sim, don't want to return result
-        result_queue.put((i, None))
-    else:
-        # Must negate result as dlib performs maximization by default
-        result_queue.put((i, -res))
+    result = obj_func(pp=pp, pid=i)
+    result_queue.put((i, result))
 
 
 def compare_pps(old_pp, new_pp):
-    """Given two sets of problem params; old_pp from a stored file/db and new_pp
-    as current arguments, compare them and if they differ, ask which one to use
-    and return it
-    (use_old_pp, pp)
     """
-    if 'dt' in old_pp:
-        dt = old_pp['dt']
-        del old_pp['dt']
-    if '_id' in old_pp:
-        del old_pp['_id']
-    # Dims are converted from list to tuple in DB, so don't diff
-    dims = new_pp['dims']
-    del new_pp['dims']
-    if 'dims' in old_pp:
-        del old_pp['dims']
+    Given two sets of problem params, compare them and if they differ, ask
+    which one to use and return it (use_old_pp, pp)
+    """
     pp_diff = diff(old_pp, new_pp)
-    new_pp['dims'] = dims
-    old_pp['dims'] = dims
     pp = new_pp
     use_old_pp = False
     if old_pp != new_pp:
         if 'dt' in old_pp:
-            print(f"Found old problem params in MongoDB added at {dt}")
-        print(f"Diff('a': old, from DB. 'b': specified, from args):\n{pp_diff}")
+            print(f"Found old problem params from file stored at {old_pp['dt']}")
+        print(f"Diff('a': old, from file. 'b': specified, from args):\n{pp_diff}")
         ans = ''
         while ans not in ['y', 'n']:
             ans = input("Use old pp (Y) instead of specified (N)?: ").lower()
@@ -245,7 +207,6 @@ def dlib_save(spec, evals, params, solver_epsilon, relative_noise_magnitude, pp,
     raw_spec = (list(spec.is_integer_variable), list(spec.lower), list(spec.upper))
     raw_results = np.zeros((len(evals), len(evals[0].x) + 1))
     info = {
-        'cmd_args': " ".join(sys.argv[1:]),
         'params': params,
         'solver_epsilon': solver_epsilon,
         'relative_noise_magnitude': relative_noise_magnitude,
