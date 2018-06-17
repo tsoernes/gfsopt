@@ -30,7 +30,8 @@ class GFSOptimizer():
         to the file name will be compared to the settings restored from the file,
         and you will be given the option to use either argument settings or file settings.
 
-        :param dict pp: All hyperparameters and their values for the objective
+        :param dict pp: Problem parameters.
+            All hyperparameters and their values for the objective
             function including those not being optimized over. E.g: ``{'beta': 0.44}``
             Can, but does not need to, include hyperparameters being optimized over.
             If a hyperparameter is specified both in 'pp' and in 'space', its value
@@ -46,9 +47,10 @@ class GFSOptimizer():
             on user quit (ctrl-c), and on completion.
         """
         if fname is None:
-            assert pp is not None and space is not None, \
-                "You must specify either file name or pp + space"
-            assert not save, "If you want to save you must specify a file name"
+            if pp is None or space is None:
+                raise ValueError("You must specify either file name or pp + space")
+            if save:
+                raise ValueError("If you want to save you must specify a file name")
         else:
             if not os.path.isfile(fname):
                 if pp is None or space is None:
