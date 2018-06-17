@@ -11,6 +11,7 @@ Provides the following features:
 * Average over multiple runs: Run a stochastic simulation using the same parameters multiple times and 
 report the average to Dlib's Global Function Search. Useful in highly stochastic domains to avoid biasing the search towards lucky runs.
 
+Something about why hyperparameters not being optimized over should be saved
 # Example usage
 
 # Installation & Requirements
