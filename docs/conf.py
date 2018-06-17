@@ -155,3 +155,14 @@ texinfo_documents = [
     (master_doc, 'gfsopt', 'gfsopt Documentation', author,
      'gfsopt', 'One line description of project.', 'Miscellaneous'),
 ]
+
+import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = ['dlib', 'numpy', 'datadiff']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
