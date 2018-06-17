@@ -48,8 +48,8 @@ master_doc = 'main'
 
 # General information about the project.
 project = 'dlib-optimizer'
-copyright = '2018, Torstein Sørnes'
-author = 'Torstein Sørnes'
+copyright = u'2018, Torstein Sørnes'
+author = u'Torstein Sørnes'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -136,7 +136,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'dlib-optimizer.tex', 'dlib-optimizer Documentation', 'Torstein Sørnes',
+    (master_doc, 'dlib-optimizer.tex', 'dlib-optimizer Documentation', u'Torstein Sørnes',
      'manual'),
 ]
 

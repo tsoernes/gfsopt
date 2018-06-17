@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="gfsopt",
     version="0.1.0",
-    author="Torstein Soernes",
+    author=u"Torstein Sørnes",
     author_email="t.soernes@gmail.com",
     description="Scaffolding for the Global Function Search optimizer from Dlib",
     long_description=long_description,
