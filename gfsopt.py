@@ -17,37 +17,33 @@ class GFSOptimizer():
                  relative_noise_magnitude=None,
                  fname=None,
                  save=True):
-        """If 'fname' is given, attempt to restore progress and settings from file.
-        If restoring fails, continue with specified settings
-        i.e. (pp, space, solver_epsilon, relative_noise_magnitude).
-        If restoring succeeds, then any settings passed as argument in addition
-        to the file name will be compared to the settings restored from the file
-        and you will be given the option of whether to use
-        argument settings or file settings.
+        """
+        Global Function Search (GFS) Optimizer. Creates a GFS optimizer for
+        optimizing a set of hyperparameters. Supports parallel optimization
+        runs and averaging of stochastic optimization runs, as well as
+        saving/restoring both settings and progress to file.
 
-        pp: dict, all hyperparameters and their values for the objective
-            function including those not being optimized over. E.g:
-            {'beta': 0.44}
+        If 'fname' is given, attempt to restore progress and settings from file.
+        If restoring fails, continue with specified settings
+        i.e. ``(pp, space, solver_epsilon, relative_noise_magnitude)``.
+        If restoring succeeds, then any settings passed as argument in addition
+        to the file name will be compared to the settings restored from the file,
+        and you will be given the option to use either argument settings or file settings.
+
+        :param dict pp: All hyperparameters and their values for the objective
+            function including those not being optimized over. E.g: ``{'beta': 0.44}``
             Can, but does not need to, include hyperparameters being optimized over.
             If a hyperparameter is specified both in 'pp' and in 'space', its value
             in 'pp' will be overridden.
-
-        space: dict, hyperparameters to optimize over.
-            entries should be of the form:
-            parameter: (IsInteger, Low_Bound, High_Bound)
-            e.g.:
-            {'alpha': (False, 0.65, 0.85)
-             'gamma': (True, 1, 8)}
-
-        solver_epsilon: float, see Dlib documentation. Default: 0.0005
-
-        relative_noise_magnitude: float, see Dlib documentation. Default: 0.001
-
-        fname: str, file name for restoring and/or saving progress
-
-        save: bool, Whether to save progress periodically,
+        :param dict space: Hyperparameters to optimize over.
+            Entries should be of the form:
+            ``parameter: (IsInteger, Low_Bound, High_Bound)`` e.g:
+            ``{'alpha': (False, 0.65, 0.85) 'gamma': (True, 1, 8)}``
+        :param float solver_epsilon: see Dlib documentation. Default: 0.0005
+        :param float relative_noise_magnitude: see Dlib documentation. Default: 0.001
+        :param str fname: file name for restoring and/or saving progress
+        :param bool save: Save progress periodically,
             on user quit (ctrl-c), and on completion.
-
         """
         if fname is None:
             assert pp is not None and space is not None, \
@@ -72,7 +68,7 @@ class GFSOptimizer():
             try:
                 # Load progress and settings from file, then compare each
                 # restored setting with settings specified by args (if any)
-                old_raw_spec, old_spec, old_evals, info, prev_best = load(fname)
+                old_raw_spec, old_spec, old_evals, info, prev_best = _load(fname)
                 saved_params = info['params']
                 print(f"Restored {len(old_evals)} trials, prev best: "
                       f"{prev_best[0]}@{list(zip(saved_params, prev_best[1:]))}")
@@ -110,22 +106,20 @@ class GFSOptimizer():
 
     def run(self, obj_func, n_concurrent=None, n_avg=1, n_sims=1000, save_iter=30):
         """
-        obj_func: function to maximize.
+        Run optimization.
+
+        :param func obj_func: function to maximize.
             Must take as argument every parameter specified in
             both 'pp' and 'space', in addition to 'pid',
-            and return the result to be maximizes over as float.
-            'pid' specified simulation run number.
+            and return the result to be maximized over as float.
+            'pid' specifies simulation run number.
             If you want to minimize instead,
             simply negate the results before returning it.
-
-        n_concurrent: int, Number of concurrent procs.
+        :param int n_concurrent: Number of concurrent procs.
             If 'None' or unspecified, then use as all logical cores
-
-        n_avg: int, Number of runs to average over
-
-        n_sims: int, Number of times to sample and test params
-
-        save_iter: int, How often to save progress
+        :param int n_avg: Number of runs to average over
+        :param int n_sims: Number of times to sample and test params
+        :param int save_iter: How often to save progress
         """
         # try:
         #     fvn = obj_func.__code__.co_varnames
@@ -136,7 +130,8 @@ class GFSOptimizer():
         #     print('args' in fvn)
         #     print('kwargs' in fvn)
         #     print(set(fvn), allargs)
-        #     print(f"Given objective function takes args {fvn} and does not seem to accept"
+        #     print(f"Given objective function takes args {fvn} "
+        #           "and does not seem to accept"
         #           f" the necessary args {allargs}")
         if n_concurrent is None:
             n_concurrent = cpu_count()
@@ -157,14 +152,11 @@ class GFSOptimizer():
         # set of params are ready, their mean is set for the corresponding eval.
         results = [[] for _ in range(n_sims)]
 
-        # TODO
-        # - Make sure everything works if pp is empty
-
         def save_evals():
             """Store results of finished evals to file; print best eval"""
             finished_evals = self.optimizer.get_function_evaluations()[1][0]
-            save(self.spec, finished_evals, self.params, self.eps, self.noise_mag,
-                 self.pp, self.fname)
+            _save(self.spec, finished_evals, self.params, self.eps, self.noise_mag,
+                  self.pp, self.fname)
             print(f"Saving {len(finished_evals)} trials to {self.fname}.")
             print_best()
 
@@ -264,16 +256,19 @@ def _compare_pps(old_pp, new_pp):
 
 
 def _dlib_proc(obj_func, pp, space_params, result_queue, i, space_vals):
-    # Add/overwrite problem params with params given from dlib
+    """
+    Add/overwrite problem params with params given from dlib,
+    then run objective function and put the result in the given queue
+    """
     for j, key in enumerate(space_params):
         pp[key] = space_vals[j]
     result = obj_func(**pp, pid=i)
     result_queue.put((i, result))
 
 
-def save(spec, evals, params, solver_epsilon, relative_noise_magnitude, pp, fname):
+def _save(spec, evals, params, solver_epsilon, relative_noise_magnitude, pp, fname):
     """
-    Save progress and settings to 'fname'.
+    Save progress and settings to a pickle file with file name 'fname'.
     See documentation for 'load' for parameter specification.
     """
     raw_spec = (list(spec.is_integer_variable), list(spec.lower), list(spec.upper))
@@ -297,7 +292,7 @@ def _load_raw(fname):
     return raw_spec, raw_results, info
 
 
-def load(fname):
+def _load(fname):
     """
     Load a pickle file containing
     (spec, results, info) where
@@ -334,6 +329,10 @@ def print_best(fname, n=1, minimum=False):
     Load results from file specified by 'fname',
     and print the 'n' best results, where best means maximum
     by default and minimum if 'minimum' is specified.
+
+    :param str fname: File name
+    :param int n: Number of results to print
+    :param bool minimum: If lower result is better
     """
     raw_spec, raw_results, info = _load_raw(fname)
     is_integer, lo_bounds, hi_bounds = raw_spec
