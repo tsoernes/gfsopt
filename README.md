@@ -41,4 +41,5 @@ To install, do:
 `pip install gfsopt`
 
 # Documentation
-See `example.py` for an example and []()
+See `example.py` for an example and [http://gfsopt.readthedocs.io/](http://gfsopt.readthedocs.io/)
+for documentation.
