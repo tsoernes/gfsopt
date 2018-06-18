@@ -8,11 +8,10 @@ Welcome to gfsopt's documentation!
 
 .. toctree::
    :maxdepth: 2
-.. literalinclude:: ../example.py
-.. automodule:: gfsopt
-   :members:
-.. autoclass:: GFSOptimizer
-   :members:
+
+   readme 
+   example
+   api
 
 Indices and tables
 ==================
