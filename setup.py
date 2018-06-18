@@ -7,7 +7,7 @@ setuptools.setup(
     name="gfsopt",
     packages=["gfsopt"],
     version="0.1.4",
-    author=u"Torstein Sørnes",
+    author="Torstein Soernes",
     author_email="t.soernes@gmail.com",
     description="Scaffolding for the Global Function Search optimizer from Dlib",
     long_description=long_description,
