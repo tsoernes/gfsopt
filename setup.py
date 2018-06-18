@@ -1,7 +1,14 @@
 import setuptools
+import os
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
+
+install_requires = ['numpy', 'dlib', 'datadiff']
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if on_rtd:
+    install_requires = []
 
 setuptools.setup(
     name="gfsopt",
