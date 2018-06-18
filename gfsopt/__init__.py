@@ -1,1 +1,1 @@
-from .gfsopt import GFSOptimizer, print_best
+from gfsopt.gfsopt import GFSOptimizer, print_best
