@@ -35,13 +35,13 @@ class GFSOptimizer():
         :param dict pp: Problem parameters.
             All hyperparameters and their values for the objective
             function, including those not being optimized over. E.g: ``{'beta': 0.44}``
-            Can, but does not need to, include hyperparameters being optimized over.
-            If a hyperparameter is specified both in 'pp' and in 'space', its value
+            Can include hyperparameters being optimized over but does not need to.
+            If a hyperparameter is specified in both 'pp' and 'space', its value
             in 'pp' will be overridden.
         :param dict space: Hyperparameters to optimize over.
             Entries should be of the form:
             ``parameter: (IsInteger, Low_Bound, High_Bound)`` e.g:
-            ``{'alpha': (False, 0.65, 0.85) 'gamma': (True, 1, 8)}``
+            ``{'alpha': (False, 0.65, 0.85), 'gamma': (True, 1, 8)}``
         :param float solver_epsilon: The accuracy to which local optima is determined
             before global exploration is resumed.
             See `Dlib <http://dlib.net/dlib/global_optimization/global_function_search_abstract.h.html#global_function_search>`_
@@ -51,9 +51,10 @@ class GFSOptimizer():
             value of 0. See
             `Dlib <http://dlib.net/dlib/global_optimization/upper_bound_function_abstract.h.html#upper_bound_function>`_
             for further documentation. Default: 0.001
-        :param str fname: File name for restoring and/or saving progress
+        :param str fname: File name for restoring and/or saving results,
+            progress and settings.
         :param bool save: Save progress periodically,
-            on user quit (ctrl-c), and on completion.
+            on user quit (CTRL-C), and on completion.
         """
         if fname is None:
             if pp is None or space is None:
@@ -95,8 +96,9 @@ class GFSOptimizer():
                 else:
                     raw_spec = old_raw_spec
                 is_int, lo_bounds, hi_bounds = raw_spec
-                assert len(params) == len(is_int), \
-                    f"Params {params} and spec {raw_spec} are of different length"
+                if len(params) != len(is_int):
+                    raise ValueError(
+                        f"Params {params} and spec {raw_spec} are of different length")
                 eps = _cmp_and_choose('solver_epsilon', info['solver_epsilon'], eps)
                 noise_mag = _cmp_and_choose('relative_noise_magnitude',
                                             info['relative_noise_magnitude'], noise_mag)
@@ -146,14 +148,17 @@ class GFSOptimizer():
         #           f" the necessary args {allargs}")
         if n_concurrent is None:
             n_concurrent = cpu_count()
-        assert type(n_concurrent) is int
-        assert type(n_avg) is int
-        assert n_concurrent > 0
-        assert n_avg > 0
-        assert n_concurrent % n_avg == 0, \
-            f"n_avg ({n_avg}) must divide n_concurrent ({n_concurrent}) evenly"
-        assert n_sims >= n_concurrent, \
-            "Must have more simulations to run in total than in parallel"
+        if n_concurrent <= 0:
+            raise ValueError('n_concurrent must be > 0')
+        if n_avg <= 0:
+            raise ValueError('n_avg must be > 0')
+        if n_concurrent % n_avg != 0:
+            # TODO This is a pretty hefty restriction. Why was this necessary?
+            raise ValueError(
+                f"n_avg ({n_avg}) must divide n_concurrent ({n_concurrent}) evenly")
+        if n_sims < n_concurrent:
+            raise ValueError(
+                "Must have more simulations to run in total than in parallel")
         n_step = n_concurrent // n_avg
 
         # Becomes populated with results as simulations finishes
@@ -357,7 +362,6 @@ def print_best(fname, n=1, minimum=False):
     is_integer, lo_bounds, hi_bounds = raw_spec
     rs = raw_results[raw_results[:, 0].argsort()]
     if minimum:
-        # Losses are stored as negative so negate.
         losses = rs[-n:, 0][::-1]
         parms = rs[-n:, 1:][::-1]
 

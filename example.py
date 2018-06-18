@@ -2,7 +2,8 @@ from gfsopt import GFSOptimizer, print_best
 
 
 def beale(x, y):
-    """ Beale's function (see https://en.wikipedia.org/wiki/Test_functions_for_optimization).
+    """
+    Beale's function (see https://en.wikipedia.org/wiki/Test_functions_for_optimization).
     Has a global _minimum_ of 0 at x=3, y=0.5.
     """
     a = (1.5 - x + x * y)**2
@@ -12,8 +13,7 @@ def beale(x, y):
 
 
 def obj_func(x, y, pid):
-    """ Objective function to be _maximized_ by Dlib.
-    """
+    """ Objective function to be _maximized_ by GFS. """
     res = beale(x, y)
     print(f"Iter: {pid}\t x:{x}, y:{y}, result:{res}")
     # Since Dlib maximizes, but we want to find the minimum,

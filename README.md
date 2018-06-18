@@ -17,7 +17,7 @@ parameters multiple times and report the average to Dlib's Global Function
 Search. Useful in highly stochastic domains to avoid biasing the search towards
 lucky runs.
 # Example usage
-A basic example where we maximize 'obj_func' with respect to 'y' over 10 runs,
+A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
 ```
 def obj_func(x, y, pid):
