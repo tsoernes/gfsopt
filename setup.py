@@ -13,7 +13,7 @@ if on_rtd:
 setuptools.setup(
     name="gfsopt",
     packages=["gfsopt"],
-    version="0.1.4",
+    version="1.0.0",
     author="Torstein Soernes",
     author_email="t.soernes@gmail.com",
     description="Scaffolding for the Global Function Search optimizer from Dlib",

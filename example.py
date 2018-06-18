@@ -49,7 +49,7 @@ optimizer.run(obj_func, n_sims=10)
 
 # Can also load previously used settings ('pp' and 'space') from file.
 # Will restore progress from last optimization run.
-optimizer = GFSOptimizer(fname)
+optimizer = GFSOptimizer(fname=fname)
 # Run 10 additional simulations
 optimizer.run(obj_func, n_sims=10)
 # >>> Restored 10 trials, prev best: -8.311937990090515@[('y', -0.5446913668245081)]

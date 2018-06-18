@@ -152,6 +152,8 @@ class GFSOptimizer():
         assert n_avg > 0
         assert n_concurrent % n_avg == 0, \
             f"n_avg ({n_avg}) must divide n_concurrent ({n_concurrent}) evenly"
+        assert n_sims >= n_concurrent, \
+            "Must have more simulations to run in total than in parallel"
         n_step = n_concurrent // n_avg
 
         # Becomes populated with results as simulations finishes
@@ -174,7 +176,9 @@ class GFSOptimizer():
         def print_best():
             best_eval = self.optimizer.get_best_function_eval()
             prms = list(zip(self.params, list(best_eval[0])))
-            print(f"Best eval so far: {best_eval[1]}@{prms}")
+            res = best_eval[1]
+            # NOTE TODO Sometimes 'res' is nan.
+            print(f"Best eval so far: {res}@{prms}")
 
         def spawn_evals(i):
             """Spawn a new sim process"""
@@ -204,11 +208,15 @@ class GFSOptimizer():
             else:
                 if result is not None:
                     results[i].append(result)
+                    # Wait until 'n_avg' results are finished for the same set
+                    # of params before reporting (mean) result to GFS
                     if len(results[i]) == n_avg:
                         evals[i].set(np.mean(results[i]))
-                if self.save and i > 0 and i % save_iter == 0 \
-                   and len(results[i]) == n_avg:
-                    save_evals()
+                if i > 0 and i % save_iter == 0 and len(results[i]) == n_avg:
+                    if self.save:
+                        save_evals()
+                    else:
+                        print_best()
 
         print(f"Optimizing for {n_sims} sims with {n_concurrent} procs,"
               f" for each set of params taking the average of {n_avg} runs,"
