@@ -20,6 +20,9 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/tsoernes/gfsopt",
+    project_urls={
+        'Documentation': 'http://gfsopt.readthedocs.io/',
+    },
     classifiers=(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

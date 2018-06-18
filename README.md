@@ -1,4 +1,6 @@
 # gfsopt
+[![Documentation Status](https://readthedocs.org/projects/gfsopt/badge/?version=latest)](https://gfsopt.readthedocs.io/en/latest/?badge=latest)
+[![Latest Version](https://pypip.in/version/gfsopt/badge.svg)](https://pypi.python.org/pypi/gfsopt/)
 
 Convenient scaffolding for the excellent
 [Global Function Search](http://dlib.net/optimization.html#global_function_search) 
