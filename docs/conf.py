@@ -136,8 +136,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'gfsopt.tex', 'gfsopt Documentation', u'Torstein Sørnes',
-     'manual'),
+    (master_doc, 'gfsopt.tex', 'gfsopt Documentation', u'Torstein Sørnes', 'manual'),
 ]
 
 # -- Options for manual page output ---------------------------------------
@@ -152,7 +151,19 @@ man_pages = [(master_doc, 'gfsopt', 'gfsopt Documentation', [author], 1)]
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'gfsopt', 'gfsopt Documentation', author,
-     'gfsopt', 'One line description of project.', 'Miscellaneous'),
+    (master_doc, 'gfsopt', 'gfsopt Documentation', author, 'gfsopt',
+     'One line description of project.', 'Miscellaneous'),
 ]
 
+from unittest.mock import MagicMock
+import sys
+
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+
+MOCK_MODULES = ['dlib', 'numpy', 'datadiff']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
