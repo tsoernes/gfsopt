@@ -6,11 +6,12 @@
 Welcome to gfsopt's documentation!
 ==========================================
 
+Please check out the `GitHub page <https://github.com/tsoernes/gfsopt>`_ for a README and in-depth
+`example <https://github.com/tsoernes/gfsopt/blob/master/example.py>`_.
+
 .. toctree::
    :maxdepth: 2
 
-   readme 
-   example
    api
 
 Indices and tables
