@@ -18,7 +18,9 @@ class GFSOptimizer():
                  fname=None,
                  save=True):
         """
-        Global Function Search (GFS) Optimizer. Creates a GFS optimizer for
+        `Global Function Search
+        <http://dlib.net/optimization.html#global_function_search>`_
+        (GFS) Optimizer. Creates a GFS optimizer for
         optimizing a set of hyperparameters. Supports parallel optimization
         runs and averaging of stochastic optimization runs, as well as
         saving/restoring both settings and progress to file.
@@ -32,7 +34,7 @@ class GFSOptimizer():
 
         :param dict pp: Problem parameters.
             All hyperparameters and their values for the objective
-            function including those not being optimized over. E.g: ``{'beta': 0.44}``
+            function, including those not being optimized over. E.g: ``{'beta': 0.44}``
             Can, but does not need to, include hyperparameters being optimized over.
             If a hyperparameter is specified both in 'pp' and in 'space', its value
             in 'pp' will be overridden.
@@ -40,9 +42,16 @@ class GFSOptimizer():
             Entries should be of the form:
             ``parameter: (IsInteger, Low_Bound, High_Bound)`` e.g:
             ``{'alpha': (False, 0.65, 0.85) 'gamma': (True, 1, 8)}``
-        :param float solver_epsilon: see Dlib documentation. Default: 0.0005
-        :param float relative_noise_magnitude: see Dlib documentation. Default: 0.001
-        :param str fname: file name for restoring and/or saving progress
+        :param float solver_epsilon: The accuracy to which local optima is determined
+            before global exploration is resumed.
+            See `Dlib <http://dlib.net/dlib/global_optimization/global_function_search_abstract.h.html#global_function_search>`_
+            for further documentation. Default: 0.0005
+        :param float relative_noise_magnitude: Should be increased for highly stochastic
+            objective functions. Deterministic and continuous function can use a
+            value of 0. See
+            `Dlib <http://dlib.net/dlib/global_optimization/upper_bound_function_abstract.h.html#upper_bound_function>`_
+            for further documentation. Default: 0.001
+        :param str fname: File name for restoring and/or saving progress
         :param bool save: Save progress periodically,
             on user quit (ctrl-c), and on completion.
         """
@@ -112,8 +121,8 @@ class GFSOptimizer():
 
         :param func obj_func: function to maximize.
             Must take as argument every parameter specified in
-            both 'pp' and 'space', in addition to 'pid',
-            and return the result to be maximized over as float.
+            'pp' and 'space', in addition to 'pid',
+            and return the result as float.
             'pid' specifies simulation run number.
             If you want to minimize instead,
             simply negate the results before returning it.

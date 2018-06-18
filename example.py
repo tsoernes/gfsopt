@@ -21,7 +21,7 @@ def obj_func(x, y, pid):
     return -res
 
 
-# For this example we pretend that we want to keep 'x' fixed at 0.5
+# For this example, we pretend that we want to keep 'x' fixed at 0.5
 # while optimizing 'y' in the range -4.5 to 4.5
 space = {'y': [False, -4.5, 4.5]}  # False since 'y' is not an Int
 pp = {'x': 0.5}
@@ -47,7 +47,7 @@ optimizer.run(obj_func, n_sims=10)
 # >>> Saving 10 trials to beale.pkl.
 # >>> Best eval so far: -8.311937990090515@[('y', -0.5446913668245081)]
 
-# Can also load previously used settings ('pp' and 'space' from file).
+# Can also load previously used settings ('pp' and 'space') from file.
 # Will restore progress from last optimization run.
 optimizer = GFSOptimizer(fname)
 # Run 10 additional simulations
