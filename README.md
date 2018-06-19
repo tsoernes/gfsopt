@@ -20,6 +20,7 @@ lucky runs.
 A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
 ```
+from gfsopt import GFSOptimizer
 def obj_func(x, y, pid):
     """"Function to be maximized (pid is iteration number)""""
     a = (1.5 - x + x * y)**2
