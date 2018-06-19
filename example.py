@@ -23,7 +23,7 @@ def obj_func(x, y, pid):
 
 # For this example, we pretend that we want to keep 'x' fixed at 0.5
 # while optimizing 'y' in the range -4.5 to 4.5
-space = {'y': [False, -4.5, 4.5]}  # False since 'y' is not an Int
+space = {'y': [-4.5, 4.5]}
 pp = {'x': 0.5}
 fname = "beale.pkl"
 
@@ -68,6 +68,35 @@ optimizer.run(obj_func, n_sims=10)
 # >>> Saving 20 trials to beale.pkl.
 # >>> Best eval so far: -7.903116185791083@[('y', -1.0621481653077909)]
 
+# Let's pretend we only want to test integer values for 'y',
+space = {'y': [-4, 4]}
+# while keeping 'x' as before.
+# As we create an optimizer and pass both settings and filename for a
+# file with saved settings, GFSOptimizer will check if the settings match.
+optimizer = GFSOptimizer(pp, space, fname=fname)
+# As they do not ('y' now only takes integer values; and the range is different),
+# you'll get the option of using the settings found in the file:
+# >>> Restored 20 trials, prev best: -7.903116185791083@[('y', -1.0621481653077909)]
+# >>> Saved bounds ([False], [-4.5], [4.5]) differ from currently specified ([True], [-4], [4])
+# >>> Use saved bounds (Y) instead of specified (N)?: N
+# >>> Optimizing for 10 sims with 4 procs, for each set of params taking the average
+# of 1 runs, optimizing over params ['y'] with solver_eps 0.0005 and noise mag 0.001
+# >>> Iter: 0	 x:0.5, y:2, result:55.578125
+# >>> Iter: 1	 x:0.5, y:3, result:289.453125
+# >>> Iter: 2	 x:0.5, y:-1, result:7.953125
+# >>> Iter: 3	 x:0.5, y:-3, result:168.703125
+# >>> Iter: 4	 x:0.5, y:-2, result:17.578125
+# >>> Iter: 5	 x:0.5, y:3, result:289.453125
+# >>> Iter: 6	 x:0.5, y:1, result:14.203125
+# >>> Iter: 7	 x:0.5, y:-3, result:168.703125
+# >>> Iter: 8	 x:0.5, y:-2, result:17.578125
+# >>> Iter: 9	 x:0.5, y:1, result:14.203125
+# >>> Saving 30 trials to beale.pkl.
+# >>> Best eval so far: -7.953125@[('y', -1.0)]
+# >>> Finished.
+
+optimizer.run(obj_func, n_sims=10)
+
 # Load pickle file and print 5 best results
 print_best(fname, 5, minimum=True)
 # >>> Loaded beale.pkl. Settings:
@@ -76,10 +105,10 @@ print_best(fname, 5, minimum=True)
 # >>> ('relative_noise_magnitude', 0.001)
 # >>> ('pp', {'x': 0.5})
 # >>> Bounds (param: lo_bound<>hi_bound):
-# >>> y: -4.5<>4.5
-# >>> Found 20 results. Top 5:
+# >>> y: -4.0<>4.0
+# >>> Found 30 results. Top 5:
 # >>> -7.903116185791083 y:-1.0621481653077909
+# >>> -7.953125 y:-1.0
 # >>> -8.311937990090515 y:-0.5446913668245081
 # >>> -8.328166942194017 y:-0.5090459682881638
 # >>> -8.578125 y:0.0
-# >>> -8.581663227025247 y:-1.5111180112494056

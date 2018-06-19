@@ -35,21 +35,24 @@ class GFSOptimizer():
         :param dict pp: Problem parameters.
             All hyperparameters and their values for the objective
             function, including those not being optimized over. E.g: ``{'beta': 0.44}``
-            Can include hyperparameters being optimized over but does not need to.
+            Can include hyperparameters being optimized over, but does not need to.
             If a hyperparameter is specified in both 'pp' and 'space', its value
             in 'pp' will be overridden.
         :param dict space: Hyperparameters to optimize over.
             Entries should be of the form:
-            ``parameter: (IsInteger, Low_Bound, High_Bound)`` e.g:
-            ``{'alpha': (False, 0.65, 0.85), 'gamma': (True, 1, 8)}``
+            ``parameter: (Low_Bound, High_Bound)`` e.g:
+            ``{'alpha': (0.65, 0.85), 'gamma': (1, 8)}``. If both bounds for a
+            parameter are Ints, then only integers within the (inclusive) range
+            will be sampled and tested.
         :param float solver_epsilon: The accuracy to which local optima is determined
             before global exploration is resumed.
-            See `Dlib <http://dlib.net/dlib/global_optimization/global_function_search_abstract.h.html#global_function_search>`_
+            See `Dlib <http://dlib.net/dlib/global_optimization/
+            global_function_search_abstract.h.html#global_function_search>`_
             for further documentation. Default: 0.0005
         :param float relative_noise_magnitude: Should be increased for highly stochastic
             objective functions. Deterministic and continuous function can use a
-            value of 0. See
-            `Dlib <http://dlib.net/dlib/global_optimization/upper_bound_function_abstract.h.html#upper_bound_function>`_
+            value of 0. See `Dlib <http://dlib.net/dlib/global_optimization/
+            upper_bound_function_abstract.h.html#upper_bound_function>`_
             for further documentation. Default: 0.001
         :param str fname: File name for restoring and/or saving results,
             progress and settings.
@@ -72,9 +75,10 @@ class GFSOptimizer():
         if space is not None:
             for parm, conf in space.items():
                 params.append(parm)
-                is_int.append(conf[0])
-                lo_bounds.append(conf[1])
-                hi_bounds.append(conf[2])
+                lo, hi = conf
+                is_int.append(type(lo) == int and type(hi) == int)
+                lo_bounds.append(lo)
+                hi_bounds.append(hi)
         old_evals = []
         if fname is not None:
             try:
@@ -114,7 +118,7 @@ class GFSOptimizer():
             relative_noise_magnitude=noise_mag)
         optimizer.set_solver_epsilon(eps)
         self.pp, self.params, self.optimizer, self.spec = pp, params, optimizer, spec
-        self.eps, self.noise_mag = eps, noise_mag
+        self.eps, self.noise_mag, self.is_int = eps, noise_mag, is_int
         self.fname, self.save = fname, save
 
     def run(self, obj_func, n_concurrent=None, n_avg=1, n_sims=1000, save_iter=30):
@@ -127,7 +131,7 @@ class GFSOptimizer():
             and return the result as float.
             'pid' specifies simulation run number.
             If you want to minimize instead,
-            simply negate the results before returning it.
+            simply negate the result before returning it.
         :param int n_concurrent: Number of concurrent procs.
             If 'None' or unspecified, then use as all logical cores
         :param int n_avg: Number of runs to average over
@@ -163,7 +167,8 @@ class GFSOptimizer():
 
         # Becomes populated with results as simulations finishes
         result_queue = Queue()
-        simproc = partial(_dlib_proc, obj_func, self.pp, self.params, result_queue)
+        simproc = partial(_dlib_proc, obj_func, self.pp, self.params, self.is_int,
+                          result_queue)
         # Becomes populated with evaluation objects to be set later
         evals = [None] * n_sims
         # Becomes populates with losses. When n_avg losses for a particular
@@ -279,13 +284,13 @@ def _compare_pps(old_pp, new_pp):
     return (use_old_pp, pp)
 
 
-def _dlib_proc(obj_func, pp, space_params, result_queue, i, space_vals):
+def _dlib_proc(obj_func, pp, space_params, is_int, result_queue, i, space_vals):
     """
     Add/overwrite problem params with params given from dlib,
     then run objective function and put the result in the given queue
     """
     for j, key in enumerate(space_params):
-        pp[key] = space_vals[j]
+        pp[key] = int(space_vals[j]) if is_int[j] else space_vals[j]
     result = obj_func(**pp, pid=i)
     result_queue.put((i, result))
 

@@ -1,8 +1,7 @@
 API
 ==========================================
 
-.. automodule:: gfsopt
-   :members:
-
 .. autoclass:: GFSOptimizer
    :members:
+.. automodule:: gfsopt
+   :members: print_best
