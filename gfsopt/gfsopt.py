@@ -25,16 +25,18 @@ class GFSOptimizer():
         runs and averaging of stochastic optimization runs, as well as
         saving/restoring both settings and progress to file.
 
+        Specify 'pp'+'space' and/or 'fname'.
         If 'fname' is given, attempt to restore progress and settings from file.
-        If restoring fails, continue with specified settings
+        If restoring fails, continue with specified/default settings
         i.e. ``(pp, space, solver_epsilon, relative_noise_magnitude)``.
-        If restoring succeeds, then any settings passed as argument in addition
-        to the file name will be compared to the settings restored from the file,
-        and you will be given the option to use either argument settings or file settings.
+        If restoring succeeds, then any setting passed as argument in addition
+        to the file name will be compared to the setting restored from the file,
+        and you will be given the choice of which one to use.
 
         :param dict pp: Problem parameters.
             All hyperparameters and their values for the objective
-            function, including those not being optimized over. E.g: ``{'beta': 0.44}``
+            function, including those not being optimized over. E.g: ``{'beta': 0.44}``.
+            Can be an empty dict. 
             Can include hyperparameters being optimized over, but does not need to.
             If a hyperparameter is specified in both 'pp' and 'space', its value
             in 'pp' will be overridden.
@@ -44,20 +46,21 @@ class GFSOptimizer():
             ``{'alpha': (0.65, 0.85), 'gamma': (1, 8)}``. If both bounds for a
             parameter are Ints, then only integers within the (inclusive) range
             will be sampled and tested.
-        :param float solver_epsilon: The accuracy to which local optima is determined
-            before global exploration is resumed.
+        :param str fname: File name for restoring and/or saving results,
+            progress and settings.
+        :param bool save: (optional) Save settings and progress periodically,
+            on user quit (CTRL-C), and on completion.
+        :param float solver_epsilon: (optional) The accuracy to which local optima
+            are determined before global exploration is resumed.
             See `Dlib <http://dlib.net/dlib/global_optimization/
             global_function_search_abstract.h.html#global_function_search>`_
             for further documentation. Default: 0.0005
-        :param float relative_noise_magnitude: Should be increased for highly stochastic
-            objective functions. Deterministic and continuous function can use a
-            value of 0. See `Dlib <http://dlib.net/dlib/global_optimization/
-            upper_bound_function_abstract.h.html#upper_bound_function>`_
+        :param float relative_noise_magnitude: (optional) Should be increased for
+            highly stochastic objective functions. Deterministic and continuous
+            functions can use a value of 0. See `Dlib
+            <http://dlib.net/dlib/global_optimization/upper_bound_function_abstract.h.html
+            #upper_bound_function>`_
             for further documentation. Default: 0.001
-        :param str fname: File name for restoring and/or saving results,
-            progress and settings.
-        :param bool save: Save progress periodically,
-            on user quit (CTRL-C), and on completion.
         """
         if fname is None:
             if pp is None or space is None:
@@ -132,11 +135,11 @@ class GFSOptimizer():
             'pid' specifies simulation run number.
             If you want to minimize instead,
             simply negate the result before returning it.
-        :param int n_concurrent: Number of concurrent procs.
+        :param int n_concurrent: (optional) Number of concurrent procs.
             If 'None' or unspecified, then use as all logical cores
-        :param int n_avg: Number of runs to average over
-        :param int n_sims: Number of times to sample and test params
-        :param int save_iter: How often to save progress
+        :param int n_avg: (optional) Number of runs to average over.
+        :param int n_sims: (optional) Number of times to sample and test params.
+        :param int save_iter: (optional) How often to save progress.
         """
         # try:
         #     fvn = obj_func.__code__.co_varnames
@@ -355,13 +358,13 @@ def _load(fname):
 
 def print_best(fname, n=1, minimum=False):
     """
-    Load results from file specified by 'fname',
+    Load results from file specified by file name 'fname'
     and print the 'n' best results, where best means maximum
     by default and minimum if 'minimum' is specified.
 
     :param str fname: File name
-    :param int n: Number of results to print
-    :param bool minimum: If lower result is better
+    :param int n: (optional) Number of results to print
+    :param bool minimum: (optional) If lower result is better
     """
     raw_spec, raw_results, info = _load_raw(fname)
     is_integer, lo_bounds, hi_bounds = raw_spec
