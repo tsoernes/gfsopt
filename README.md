@@ -16,7 +16,7 @@ parameters multiple times and report the average to Dlib's Global Function
 Search. Useful in highly stochastic domains to avoid biasing the search towards
 lucky runs.
 
-For the theoretical background on GFS, see ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html) and [Malherbe & Vayatis 2017: Global optimization of Lipschitz functions](https://arxiv.org/abs/1703.02628)
+For theoretical background of GFS, see ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html) and [Malherbe & Vayatis 2017: Global optimization of Lipschitz functions](https://arxiv.org/abs/1703.02628)
 # Example usage
 A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
