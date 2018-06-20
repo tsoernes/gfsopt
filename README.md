@@ -6,8 +6,8 @@
 
 Convenient scaffolding for the excellent
 [Global Function Search](http://dlib.net/optimization.html#global_function_search) 
-hyperparameter optimizer from the [Dlib](http://dlib.net) library. 
-(See: ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html))
+hyperparameter optimizer from the [Dlib](http://dlib.net) library
+(see: ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html) and [Malherbe & Vayatis 2017: Global optimization of Lipschitz functions](https://arxiv.org/abs/1703.02628))
 
 Provides the following features:
 * Parallel optimization: Run multiple hyperparameter searches in parallel
