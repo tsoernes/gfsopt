@@ -9,7 +9,7 @@ Convenient scaffolding for the excellent
 (GFS) hyperparameter optimizer from the [Dlib](http://dlib.net) library.
 
 Provides the following features:
-* Parallel optimization: Run multiple hyperparameter searches in parallel
+* Parallel optimization: Run multiple hyperparameter searches in parallel on multiple cores
 * Save and restore progress: Save/restore settings and optimization progress to/from file. 
 * Average over multiple runs: Run a stochastic objective function using the same
 parameters multiple times and report the average to Dlib's Global Function
@@ -20,7 +20,7 @@ For theoretical background of GFS, see ['A Global Optimization Algorithm Worth U
 # Example usage
 A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
-```
+```python
 from gfsopt import GFSOptimizer
 def obj_func(x, y, pid):
     """"Function to be maximized (pid is iteration number)""""
