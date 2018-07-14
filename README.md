@@ -30,7 +30,7 @@ def obj_func(x, y, pid):
     return -(a + b + c)
 # For this example we pretend that we want to keep 'x' fixed at 0.5
 # while optimizing 'y' in the range -4.5 to 4.5
-pp = {'x': 0.5}  # Problem parameters
+pp = {'x': 0.5}  # Fixed Problem Parameters
 space = {'y': [-4.5, 4.5]}  # Parameters to optimize over
 optimizer = GFSOptimizer(pp, space, fname="test.pkl")
 # Will sample and test 'y' 10 times, then save results, progress and settings to file
