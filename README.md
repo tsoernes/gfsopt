@@ -10,7 +10,7 @@ Convenient scaffolding for the excellent
 
 Provides the following features:
 * Parallel optimization: Run multiple hyperparameter searches in parallel on multiple cores
-* Save and restore progress: Save/restore settings and optimization progress to/from file. 
+* Save and restore progress: Save/restore settings, parameters and optimization progress to/from file. 
 * Average over multiple runs: Run a stochastic objective function using the same
 parameters multiple times and report the average to Dlib's Global Function
 Search. Useful in highly stochastic domains to avoid biasing the search towards
