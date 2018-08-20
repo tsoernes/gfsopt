@@ -22,15 +22,17 @@ A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
 ```python
 from gfsopt import GFSOptimizer
+
 def obj_func(x, y, pid):
     """"Function to be maximized (pid is iteration number)""""
     a = (1.5 - x + x * y)**2
     b = (2.25 - x + x * y * y)**2
     c = (2.625 - x + x * y * y * y)**2
     return -(a + b + c)
-# For this example we pretend that we want to keep 'x' fixed at 0.5
+    
+# For this example, we pretend that we want to keep 'x' fixed at 0.5
 # while optimizing 'y' in the range -4.5 to 4.5
-pp = {'x': 0.5}  # Fixed Problem Parameters
+pp = {'x': 0.5}  # Fixed problem parameters
 space = {'y': [-4.5, 4.5]}  # Parameters to optimize over
 optimizer = GFSOptimizer(pp, space, fname="test.pkl")
 # Will sample and test 'y' 10 times, then save results, progress and settings to file
