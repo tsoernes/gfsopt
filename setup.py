@@ -1,5 +1,6 @@
-import setuptools
 import os
+
+import setuptools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -13,7 +14,7 @@ if on_rtd:
 setuptools.setup(
     name="gfsopt",
     packages=["gfsopt"],
-    version="1.0.1",
+    version="1.1.0",
     author="Torstein Soernes",
     author_email="t.soernes@gmail.com",
     description="Scaffolding for the Global Function Search optimizer from Dlib",
