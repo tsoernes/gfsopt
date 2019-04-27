@@ -1,8 +1,8 @@
+import os.path
 import pickle
 import sys
 from functools import partial
 from multiprocessing import Process, Queue, cpu_count
-import os.path
 
 import dlib
 import numpy as np
@@ -36,7 +36,7 @@ class GFSOptimizer():
         :param dict pp: Problem parameters.
             All hyperparameters and their values for the objective
             function, including those not being optimized over. E.g: ``{'beta': 0.44}``.
-            Can be an empty dict. 
+            Can be an empty dict.
             Can include hyperparameters being optimized over, but does not need to.
             If a hyperparameter is specified in both 'pp' and 'space', its value
             in 'pp' will be overridden.
@@ -62,11 +62,17 @@ class GFSOptimizer():
             #upper_bound_function>`_
             for further documentation. Default: 0.001
         """
+        # Verify inputs
         if fname is None:
             if pp is None or space is None:
-                raise ValueError("You must specify either file name or pp + space")
+                raise ValueError(
+                    "You must specify at least file name `fname` or problem "
+                    "parameters `pp` along with a hyperparameter space `space`."
+                )
             if save:
-                raise ValueError("If you want to save you must specify a file name")
+                raise ValueError(
+                    "If you want to save you must specify a file name `fname`."
+                )
         else:
             if not os.path.isfile(fname):
                 if pp is None or space is None:
@@ -89,37 +95,54 @@ class GFSOptimizer():
                 # restored setting with settings specified by args (if any)
                 old_raw_spec, old_spec, old_evals, info, prev_best = _load(fname)
                 saved_params = info['params']
-                print(f"Restored {len(old_evals)} trials, prev best: "
-                      f"{prev_best[0]}@{list(zip(saved_params, prev_best[1:]))}")
+                print(
+                    f"Restored {len(old_evals)} trials, prev best: "
+                    f"{prev_best[0]}@{list(zip(saved_params, prev_best[1:]))}"
+                )
                 if params and params != saved_params:
                     # Switching params being optimized over would throw off Dlib.
                     # Must use restore params from specified
-                    print(f"Saved params {saved_params} differ from currently specified "
-                          f"{params}. Using saved.")
+                    print(
+                        f"Saved params {saved_params} differ from currently specified "
+                        f"{params}. Using saved."
+                    )
                 params = saved_params
                 if is_int:
-                    raw_spec = _cmp_and_choose('bounds', old_raw_spec,
-                                               (is_int, lo_bounds, hi_bounds))
+                    raw_spec = _cmp_and_choose(
+                        'bounds', old_raw_spec, (is_int, lo_bounds, hi_bounds)
+                    )
                 else:
                     raw_spec = old_raw_spec
                 is_int, lo_bounds, hi_bounds = raw_spec
                 if len(params) != len(is_int):
                     raise ValueError(
-                        f"Params {params} and spec {raw_spec} are of different length")
+                        f"Params {params} and spec {raw_spec} are of different length"
+                    )
                 eps = _cmp_and_choose('solver_epsilon', info['solver_epsilon'], eps)
-                noise_mag = _cmp_and_choose('relative_noise_magnitude',
-                                            info['relative_noise_magnitude'], noise_mag)
+                noise_mag = _cmp_and_choose(
+                    'relative_noise_magnitude', info['relative_noise_magnitude'],
+                    noise_mag
+                )
                 _, pp = _compare_pps(info['pp'], pp)
             except FileNotFoundError:
+                # Create a new file
                 pass
         eps = 0.0005 if eps is None else eps
         noise_mag = 0.001 if noise_mag is None else noise_mag
         spec = dlib.function_spec(bound1=lo_bounds, bound2=hi_bounds, is_integer=is_int)
-        optimizer = dlib.global_function_search(
-            [spec],
-            initial_function_evals=[old_evals],
-            relative_noise_magnitude=noise_mag)
+        if old_evals:
+            optimizer = dlib.global_function_search(
+                [spec],
+                initial_function_evals=[old_evals],
+                relative_noise_magnitude=noise_mag
+            )
+        else:
+            optimizer = dlib.global_function_search(
+                [spec]
+            )
+            optimizer.set_relative_noise_magnitude(noise_mag)
         optimizer.set_solver_epsilon(eps)
+
         self.pp, self.params, self.optimizer, self.spec = pp, params, optimizer, spec
         self.eps, self.noise_mag, self.is_int = eps, noise_mag, is_int
         self.fname, self.save = fname, save
@@ -130,11 +153,11 @@ class GFSOptimizer():
 
         :param func obj_func: function to maximize.
             Must take as argument every parameter specified in
-            'pp' and 'space', in addition to 'pid',
+            both 'pp' and 'space', in addition to 'pid',
             and return the result as float.
             'pid' specifies simulation run number.
             If you want to minimize instead,
-            simply negate the result before returning it.
+            simply negate the result in the objective function before returning it.
         :param int n_concurrent: (optional) Number of concurrent procs.
             If 'None' or unspecified, then use as all logical cores
         :param int n_avg: (optional) Number of runs to average over.
@@ -162,16 +185,19 @@ class GFSOptimizer():
         if n_concurrent % n_avg != 0:
             # TODO This is a pretty hefty restriction. Why was this necessary?
             raise ValueError(
-                f"n_avg ({n_avg}) must divide n_concurrent ({n_concurrent}) evenly")
+                f"n_avg ({n_avg}) must divide n_concurrent ({n_concurrent}) evenly"
+            )
         if n_sims < n_concurrent:
             raise ValueError(
-                "Must have more simulations to run in total than in parallel")
+                "Must have more simulations to run in total than in parallel"
+            )
         n_step = n_concurrent // n_avg
 
         # Becomes populated with results as simulations finishes
         result_queue = Queue()
-        simproc = partial(_dlib_proc, obj_func, self.pp, self.params, self.is_int,
-                          result_queue)
+        simproc = partial(
+            _dlib_proc, obj_func, self.pp, self.params, self.is_int, result_queue
+        )
         # Becomes populated with evaluation objects to be set later
         evals = [None] * n_sims
         # Becomes populates with losses. When n_avg losses for a particular
@@ -181,8 +207,10 @@ class GFSOptimizer():
         def save_evals():
             """Store results of finished evals to file; print best eval"""
             finished_evals = self.optimizer.get_function_evaluations()[1][0]
-            _save(self.spec, finished_evals, self.params, self.eps, self.noise_mag,
-                  self.pp, self.fname)
+            _save(
+                self.spec, finished_evals, self.params, self.eps, self.noise_mag, self.pp,
+                self.fname
+            )
             print(f"Saving {len(finished_evals)} trials to {self.fname}.")
             print_best()
 
@@ -231,10 +259,12 @@ class GFSOptimizer():
                     else:
                         print_best()
 
-        print(f"Optimizing for {n_sims} sims with {n_concurrent} procs,"
-              f" for each set of params taking the average of {n_avg} runs,"
-              f" optimizing over params {self.params} with solver_eps {self.eps}"
-              f" and noise mag {self.noise_mag}")
+        print(
+            f"Optimizing for {n_sims} sims with {n_concurrent} concurrent processes,"
+            f" for each set of parameters taking the average of {n_avg} runs,"
+            f" optimizing over parameters {self.params} with `solver_epsilon={self.eps}`"
+            f" and `relative_noise_magnitude={self.noise_mag}`."
+        )
         # Spawn initial processes
         for i in range(n_step):
             spawn_evals(i)
