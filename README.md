@@ -6,30 +6,33 @@
 
 Convenient scaffolding for the excellent
 [Global Function Search](http://dlib.net/optimization.html#global_function_search) 
-hyperparameter optimizer from the [Dlib](http://dlib.net) library. 
-(See: ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html))
+(GFS) hyperparameter optimizer from the [Dlib](http://dlib.net) library.
 
 Provides the following features:
-* Parallel optimization: Run multiple hyperparameter searches in parallel
-* Save and restore progress: Save/restore settings and optimization progress to/from file. 
+* Parallel optimization: Run multiple hyperparameter searches in parallel on multiple cores
+* Save and restore progress: Save/restore settings, parameters and optimization progress to/from file. 
 * Average over multiple runs: Run a stochastic objective function using the same
 parameters multiple times and report the average to Dlib's Global Function
 Search. Useful in highly stochastic domains to avoid biasing the search towards
 lucky runs.
+
+For theoretical background of GFS, see ['A Global Optimization Algorithm Worth Using'](http://blog.dlib.net/2017/12/a-global-optimization-algorithm-worth.html) and [Malherbe & Vayatis 2017: Global optimization of Lipschitz functions](https://arxiv.org/abs/1703.02628)
 # Example usage
 A basic example where we maximize `obj_func` with respect to `y` over 10 runs,
 with as many parallel processes as there are logical cores, and save progress to file.
-```
+```python
 from gfsopt import GFSOptimizer
+
 def obj_func(x, y, pid):
     """"Function to be maximized (pid is iteration number)""""
     a = (1.5 - x + x * y)**2
     b = (2.25 - x + x * y * y)**2
     c = (2.625 - x + x * y * y * y)**2
     return -(a + b + c)
-# For this example we pretend that we want to keep 'x' fixed at 0.5
+    
+# For this example, we pretend that we want to keep 'x' fixed at 0.5
 # while optimizing 'y' in the range -4.5 to 4.5
-pp = {'x': 0.5}  # Problem parameters
+pp = {'x': 0.5}  # Fixed problem parameters
 space = {'y': [-4.5, 4.5]}  # Parameters to optimize over
 optimizer = GFSOptimizer(pp, space, fname="test.pkl")
 # Will sample and test 'y' 10 times, then save results, progress and settings to file
