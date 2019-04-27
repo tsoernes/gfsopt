@@ -10,13 +10,15 @@ from datadiff import diff
 
 
 class GFSOptimizer():
-    def __init__(self,
-                 pp=None,
-                 space=None,
-                 solver_epsilon=None,
-                 relative_noise_magnitude=None,
-                 fname=None,
-                 save=True):
+    def __init__(
+        self,
+        pp=None,
+        space=None,
+        solver_epsilon=None,
+        relative_noise_magnitude=None,
+        fname=None,
+        save=False
+    ):
         """
         `Global Function Search
         <http://dlib.net/optimization.html#global_function_search>`_

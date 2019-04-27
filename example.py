@@ -28,7 +28,7 @@ pp = {'x': 0.5}
 fname = "beale.pkl"
 
 # Create an optimizer
-optimizer = GFSOptimizer(pp, space, fname=fname)
+optimizer = GFSOptimizer(pp, space, fname=fname, save=True)
 # Will run 10 simulations with as many in parallel as there are logical cores,
 # then save settings and results to file.
 optimizer.run(obj_func, n_sims=10)
