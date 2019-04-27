@@ -220,7 +220,6 @@ class GFSOptimizer():
             best_eval = self.optimizer.get_best_function_eval()
             prms = list(zip(self.params, list(best_eval[0])))
             res = best_eval[1]
-            # NOTE TODO Sometimes 'res' is nan.
             print(f"Best eval so far: {res}@{prms}")
 
         def spawn_evals(i):
