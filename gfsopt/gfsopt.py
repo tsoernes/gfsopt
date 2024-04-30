@@ -1,117 +1,128 @@
-import os.path
 import pickle
 import sys
 from functools import partial
 from multiprocessing import Process, Queue, cpu_count
+from pathlib import Path
+from typing import Callable, TypeVar
 
 import dlib
 import numpy as np
 from datadiff import diff
 
+PathOrStr = Path | str
 
-class GFSOptimizer():
+
+class GFSOptimizer:
     def __init__(
         self,
-        pp=None,
-        space=None,
-        solver_epsilon=None,
-        relative_noise_magnitude=None,
-        fname=None,
-        save=False
+        pp: dict,
+        space: dict[str, tuple[int, int] | tuple[float, float]],
+        solver_epsilon: float = 0.0005,
+        relative_noise_magnitude: float = 0.001,
+        path: PathOrStr | None = None,
+        save: bool = False,
     ):
         """
-        `Global Function Search
+        `Global Function Search (GFS) Optimizer.
         <http://dlib.net/optimization.html#global_function_search>`_
-        (GFS) Optimizer. Creates a GFS optimizer for
-        optimizing a set of hyperparameters. Supports parallel optimization
-        runs and averaging of stochastic optimization runs, as well as
-        saving/restoring both settings and progress to file.
 
-        Specify 'pp'+'space' and/or 'fname'.
-        If 'fname' is given, attempt to restore progress and settings from file.
+        Creates a GFS optimizer for optimizing a set of hyperparameters.
+        Supports multicore parallel optimization runs and averaging over
+        stochastic optimization runs. Supports saving/restoring both
+        settings and progress to file.
+
+        To create, specify settings 'pp'+'space' and/or file name 'path'.
+        If 'path' is given, attempt to restore progress and settings from file.
         If restoring fails, continue with specified/default settings
         i.e. ``(pp, space, solver_epsilon, relative_noise_magnitude)``.
         If restoring succeeds, then any setting passed as argument in addition
         to the file name will be compared to the setting restored from the file,
         and you will be given the choice of which one to use.
 
-        :param dict pp: Problem parameters.
-            All hyperparameters and their values for the objective
-            function, including those not being optimized over. E.g: ``{'beta': 0.44}``.
-            Can be an empty dict.
-            Can include hyperparameters being optimized over, but does not need to.
-            If a hyperparameter is specified in both 'pp' and 'space', its value
-            in 'pp' will be overridden.
-        :param dict space: Hyperparameters to optimize over.
+        Parameters
+        ----------
+        pp: Fixed Problem Parameters.
+            All fixed hyperparameters and their values for the objective
+            function. E.g: ``{'beta': 0.44}``.
+            Can be an empty dict if there are no fixed parameters.
+        space: The parameter space for each of the hyperparameters to
+            optimize over.
             Entries should be of the form:
             ``parameter: (Low_Bound, High_Bound)`` e.g:
             ``{'alpha': (0.65, 0.85), 'gamma': (1, 8)}``. If both bounds for a
             parameter are Ints, then only integers within the (inclusive) range
             will be sampled and tested.
-        :param str fname: File name for restoring and/or saving results,
-            progress and settings.
-        :param bool save: (optional) Save settings and progress periodically,
-            on user quit (CTRL-C), and on completion.
-        :param float solver_epsilon: (optional) The accuracy to which local optima
+        solver_epsilon: The accuracy to which local optima
             are determined before global exploration is resumed.
             See `Dlib <http://dlib.net/dlib/global_optimization/
             global_function_search_abstract.h.html#global_function_search>`_
-            for further documentation. Default: 0.0005
-        :param float relative_noise_magnitude: (optional) Should be increased for
+            for further documentation.
+        relative_noise_magnitude: (optional) Should be increased for
             highly stochastic objective functions. Deterministic and continuous
             functions can use a value of 0. See `Dlib
             <http://dlib.net/dlib/global_optimization/upper_bound_function_abstract.h.html
             #upper_bound_function>`_
-            for further documentation. Default: 0.001
+            for further documentation.
+        path: File path or name for restoring and/or saving results,
+            progress and settings.
+        save: Save settings and progress periodically,
+            on user quit (CTRL-C), and on completion.
         """
+
         # Verify inputs
-        if fname is None:
+        if path:
+            # Save or restore
+            if not Path(path).exists():
+                if pp is None or space is None:
+                    raise ValueError(
+                        "Either pp or space is not given. Attempted "
+                        "to load from file, but path does not exist."
+                    )
+        else:
             if pp is None or space is None:
-                raise ValueError(
-                    "You must specify at least file name `fname` or problem "
-                    "parameters `pp` along with a hyperparameter space `space`."
-                )
+                raise ValueError("Either pp or space is not given.")
             if save:
                 raise ValueError(
-                    "If you want to save you must specify a file name `fname`."
+                    "If you want to save you must specify a file name `path`."
                 )
-        else:
-            if not os.path.isfile(fname):
-                if pp is None or space is None:
-                    raise FileNotFoundError(fname)
         eps = solver_epsilon
         noise_mag = relative_noise_magnitude
 
-        params, is_int, lo_bounds, hi_bounds = [], [], [], []
+        # Parse arguments into a format suitable for Dlib
+        params = []  # parameters to optimize over
+        # Whether a parameter should be optimized in integer steps or not
+        is_int = []
+        # Lower and upper bounds within which to optimize parameters
+        lo_bounds, hi_bounds = [], []
         if space is not None:
             for parm, conf in space.items():
                 params.append(parm)
                 lo, hi = conf
-                is_int.append(type(lo) == int and type(hi) == int)
+                is_int.append(isinstance(lo, int) and isinstance(hi, int))
                 lo_bounds.append(lo)
                 hi_bounds.append(hi)
         old_evals = []
-        if fname is not None:
+        if path is not None:
             try:
                 # Load progress and settings from file, then compare each
                 # restored setting with settings specified by args (if any)
-                old_raw_spec, old_spec, old_evals, info, prev_best = _load(fname)
-                saved_params = info['params']
+                old_raw_spec, _old_spec, old_evals, info, prev_best = _load(path)
+                saved_params = info["params"]
                 print(
                     f"Restored {len(old_evals)} trials, prev best: "
                     f"{prev_best[0]}@{list(zip(saved_params, prev_best[1:]))}"
                 )
                 if params and params != saved_params:
                     # Switching params being optimized over would throw off Dlib.
-                    # Must use restore params from specified
+                    # Must use restored params instead of specified parameters.
                     print(
-                        f"Saved params {saved_params} differ from currently specified "
+                        f"Warning: Saved params {saved_params} differ from currently specified "
                         f"{params}. Using saved."
                     )
                 params = saved_params
                 if is_int:
                     raw_spec = _cmp_and_choose(
-                        'bounds', old_raw_spec, (is_int, lo_bounds, hi_bounds)
+                        "bounds", old_raw_spec, (is_int, lo_bounds, hi_bounds)
                     )
                 else:
                     raw_spec = old_raw_spec
@@ -120,70 +131,67 @@ class GFSOptimizer():
                     raise ValueError(
                         f"Params {params} and spec {raw_spec} are of different length"
                     )
-                eps = _cmp_and_choose('solver_epsilon', info['solver_epsilon'], eps)
+                eps = _cmp_and_choose("solver_epsilon", info["solver_epsilon"], eps)
                 noise_mag = _cmp_and_choose(
-                    'relative_noise_magnitude', info['relative_noise_magnitude'],
-                    noise_mag
+                    "relative_noise_magnitude",
+                    info["relative_noise_magnitude"],
+                    noise_mag,
                 )
-                _, pp = _compare_pps(info['pp'], pp)
+                _, pp = _compare_pps(info["pp"], pp)
             except FileNotFoundError:
-                # Create a new file
+                # Create a new file. Dlib does this for us
                 pass
-        eps = 0.0005 if eps is None else eps
-        noise_mag = 0.001 if noise_mag is None else noise_mag
+
+        # Initialize the GFS optimizer
         spec = dlib.function_spec(bound1=lo_bounds, bound2=hi_bounds, is_integer=is_int)
         if old_evals:
             optimizer = dlib.global_function_search(
                 [spec],
                 initial_function_evals=[old_evals],
-                relative_noise_magnitude=noise_mag
             )
         else:
-            optimizer = dlib.global_function_search(
-                [spec]
-            )
-            optimizer.set_relative_noise_magnitude(noise_mag)
-        optimizer.set_solver_epsilon(eps)
+            optimizer = dlib.global_function_search([spec])
+        optimizer.set_solver_epsilon(solver_epsilon)
+        optimizer.set_relative_noise_magnitude(relative_noise_magnitude)
 
         self.pp, self.params, self.optimizer, self.spec = pp, params, optimizer, spec
-        self.eps, self.noise_mag, self.is_int = eps, noise_mag, is_int
-        self.fname, self.save = fname, save
+        self.eps, self.noise_mag = eps, noise_mag
+        self.is_int = is_int
+        self.path, self.save = path, save
 
-    def run(self, obj_func, n_concurrent=None, n_avg=1, n_sims=1000, save_iter=30):
+    def run(
+        self,
+        obj_func: Callable[..., float | int],
+        n_concurrent: int | None = None,
+        n_avg: int = 1,
+        n_sims: int = 1000,
+        save_iter: int = 30,
+    ):
         """
         Run optimization.
 
-        :param func obj_func: function to maximize.
-            Must take as argument every parameter specified in
-            both 'pp' and 'space', in addition to 'pid',
+        Parameters
+        ----------
+        obj_func: Function to maximize.
+            The function must take as arguments every parameter specified in
+            the union of  'pp' and 'space', in addition to 'pid',
             and return the result as float.
-            'pid' specifies simulation run number.
+            'pid', an integer, specifies simulation run number.
             If you want to minimize instead,
             simply negate the result in the objective function before returning it.
-        :param int n_concurrent: (optional) Number of concurrent procs.
-            If 'None' or unspecified, then use as all logical cores
-        :param int n_avg: (optional) Number of runs to average over.
-        :param int n_sims: (optional) Number of times to sample and test params.
-        :param int save_iter: (optional) How often to save progress.
+        n_concurrent: Number of concurrent processes.
+            If 'None' (the default), then use as all logical cores.
+        n_avg: Number of runs to average results over. Useful to counteract noise
+            when optimizing stochastic functions.
+        n_sims: Number of times to sample and test params.
+        save_iter: How often to save progress.
         """
-        # try:
-        #     fvn = obj_func.__code__.co_varnames
-        # except AttributeError:
-        #     print("Given 'obj_fun' is not a function or a lambda")
-        # allargs = set(['pid']).union(set(self.pp.keys())).union(set(self.params))
-        # if not ('args' in fvn or 'kwargs' in fvn or set(fvn) == allargs):
-        #     print('args' in fvn)
-        #     print('kwargs' in fvn)
-        #     print(set(fvn), allargs)
-        #     print(f"Given objective function takes args {fvn} "
-        #           "and does not seem to accept"
-        #           f" the necessary args {allargs}")
         if n_concurrent is None:
             n_concurrent = cpu_count()
         if n_concurrent <= 0:
-            raise ValueError('n_concurrent must be > 0')
+            raise ValueError(f"{n_concurrent=} must be > 0")
         if n_avg <= 0:
-            raise ValueError('n_avg must be > 0')
+            raise ValueError(f"{n_avg=} must be > 0")
         if n_concurrent % n_avg != 0:
             # TODO This is a pretty hefty restriction. Why was this necessary?
             raise ValueError(
@@ -210,20 +218,26 @@ class GFSOptimizer():
             """Store results of finished evals to file; print best eval"""
             finished_evals = self.optimizer.get_function_evaluations()[1][0]
             _save(
-                self.spec, finished_evals, self.params, self.eps, self.noise_mag, self.pp,
-                self.fname
+                self.spec,
+                finished_evals,
+                self.params,
+                self.eps,
+                self.noise_mag,
+                self.pp,
+                self.path,
             )
-            print(f"Saving {len(finished_evals)} trials to {self.fname}.")
+            print(f"Saving {len(finished_evals)} trials to {self.path}.")
             print_best()
 
         def print_best():
+            """Print best run thus far"""
             best_eval = self.optimizer.get_best_function_eval()
             prms = list(zip(self.params, list(best_eval[0])))
             res = best_eval[1]
             print(f"Best eval so far: {res}@{prms}")
 
         def spawn_evals(i):
-            """Spawn a new sim process"""
+            """Spawn a new optimizer process"""
             eeval = self.optimizer.get_next_x()
             evals[i] = eeval  # Store eval object to be set with result later
             vals = list(eeval.x)
@@ -285,19 +299,28 @@ class GFSOptimizer():
         print("Finished.")
 
 
-def _cmp_and_choose(what, saved, specified):
+X = TypeVar("X")
+
+
+def _cmp_and_choose(what: str, saved: X, specified: X) -> X:
+    """
+    Compare and choose between settings loaded from file (saved)
+    or settings given as paremeter on GFSOptimizer initilization.
+    """
     chosen = saved
     if specified and saved != specified:
-        print(f"Saved {what} {saved} differ from currently specified {specified}")
+        print(
+            f"Saved {what}={saved} differ from currently specified {what}={specified}"
+        )
         inp = ""
-        while inp not in ['N', 'Y']:
-            inp = input(f"Use saved {what} (Y) instead of specified (N)?: ").upper()
+        while inp not in ["N", "Y"]:
+            inp = input(f"Use saved {what} (Y) or specified {what} (N)?: ").upper()
         if inp == "N":
             chosen = specified
     return chosen
 
 
-def _compare_pps(old_pp, new_pp):
+def _compare_pps(old_pp: dict, new_pp: dict) -> tuple[bool, dict]:
     """
     Given two sets of problem params, compare them and if they differ, ask
     which one to use and return it (use_old_pp, pp)
@@ -306,13 +329,13 @@ def _compare_pps(old_pp, new_pp):
     use_old_pp = True
     if new_pp and old_pp != new_pp:
         pp_diff = diff(old_pp, new_pp)
-        if 'dt' in old_pp:
+        if "dt" in old_pp:
             print(f"Found old problem params from file stored at {old_pp['dt']}")
         print(f"Diff('a': old, from file. 'b': specified, from args):\n{pp_diff}")
-        ans = ''
-        while ans not in ['Y', 'N']:
+        ans = ""
+        while ans not in ["Y", "N"]:
             ans = input("Use old pp (Y) instead of specified (N)?: ").upper()
-        if ans == 'N':
+        if ans == "N":
             use_old_pp = False
             pp = new_pp
     return (use_old_pp, pp)
@@ -329,33 +352,33 @@ def _dlib_proc(obj_func, pp, space_params, is_int, result_queue, i, space_vals):
     result_queue.put((i, result))
 
 
-def _save(spec, evals, params, solver_epsilon, relative_noise_magnitude, pp, fname):
+def _save(spec, evals, params, solver_epsilon, relative_noise_magnitude, pp, path):
     """
-    Save progress and settings to a pickle file with file name 'fname'.
+    Save progress and settings to a pickle file with file name 'path'.
     See documentation for 'load' for parameter specification.
     """
     raw_spec = (list(spec.is_integer_variable), list(spec.lower), list(spec.upper))
     raw_results = np.zeros((len(evals), len(evals[0].x) + 1))
     info = {
-        'params': params,
-        'solver_epsilon': solver_epsilon,
-        'relative_noise_magnitude': relative_noise_magnitude,
-        'pp': pp,
+        "params": params,
+        "solver_epsilon": solver_epsilon,
+        "relative_noise_magnitude": relative_noise_magnitude,
+        "pp": pp,
     }
     for i, eeval in enumerate(evals):
         raw_results[i][0] = eeval.y
         raw_results[i][1:] = list(eeval.x)
-    with open(fname, "wb") as f:
+    with open(path, "wb") as f:
         pickle.dump((raw_spec, raw_results, info), f)
 
 
-def _load_raw(fname):
-    with open(fname, "rb") as f:
+def _load_raw(path):
+    with open(path, "rb") as f:
         raw_spec, raw_results, info = pickle.load(f)
     return raw_spec, raw_results, info
 
 
-def _load(fname):
+def _load(path):
     """
     Load a pickle file containing
     (spec, results, info) where
@@ -375,7 +398,7 @@ def _load(fname):
     (dlib.function_spec, [dlib.function_eval], dict, prev_best)
       where prev_best: np.array[result, param1, param2, ...]
     """
-    raw_spec, raw_results, info = _load_raw(fname)
+    raw_spec, raw_results, info = _load_raw(path)
     is_integer, lo_bounds, hi_bounds = raw_spec
     spec = dlib.function_spec(bound1=lo_bounds, bound2=hi_bounds, is_integer=is_integer)
     evals = []
@@ -387,17 +410,17 @@ def _load(fname):
     return raw_spec, spec, evals, info, prev_best
 
 
-def print_best(fname, n=1, minimum=False):
+def print_best(path, n=1, minimum=False):
     """
-    Load results from file specified by file name 'fname'
+    Load results from file specified by file name 'path'
     and print the 'n' best results, where best means maximum
     by default and minimum if 'minimum' is specified.
 
-    :param str fname: File name
+    :param str path: File name
     :param int n: (optional) Number of results to print
     :param bool minimum: (optional) If lower result is better
     """
-    raw_spec, raw_results, info = _load_raw(fname)
+    raw_spec, raw_results, info = _load_raw(path)
     is_integer, lo_bounds, hi_bounds = raw_spec
     rs = raw_results[raw_results[:, 0].argsort()]
     if minimum:
@@ -406,16 +429,16 @@ def print_best(fname, n=1, minimum=False):
 
     res_str = ""
     for i in range(len(losses)):
-        pa = [f"{p}:{v}" for p, v in zip(info['params'], parms[i])]
+        pa = [f"{p}:{v}" for p, v in zip(info["params"], parms[i])]
         # pa = list(zip(parms[i]
         lo = f"{losses[i]} "
         res_str += lo + " ".join(pa) + "\n"
 
     bound_vals = [f"{lo}<>{hi}" for lo, hi in zip(raw_spec[1], raw_spec[2])]
-    bounds = [f"{prm}: {bnd}" for prm, bnd in zip(info['params'], bound_vals)]
+    bounds = [f"{prm}: {bnd}" for prm, bnd in zip(info["params"], bound_vals)]
     bounds_str = "\n".join(bounds)
 
-    print(f"Loaded {fname}. Settings:")
+    print(f"Loaded {path}. Settings:")
     print(*info.items(), sep="\n")
     print(f"Bounds (param: lo_bound<>hi_bound):\n{bounds_str}")
     print(f"Found {len(raw_results)} results. Top {n}:\n{res_str}")

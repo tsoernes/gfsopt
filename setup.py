@@ -14,7 +14,7 @@ if on_rtd:
 setuptools.setup(
     name="gfsopt",
     packages=["gfsopt"],
-    version="1.1.0",
+    version="1.1.1",
     author="Torstein Soernes",
     author_email="t.soernes@gmail.com",
     description="Scaffolding for the Global Function Search optimizer from Dlib",
@@ -29,6 +29,6 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ),
-    python_requires='>=3.6',
+    python_requires='>=3.9',
     install_requires=install_requires,
 )
